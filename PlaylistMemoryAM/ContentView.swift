@@ -74,6 +74,18 @@ struct ContentView: View {
     
     @State private var playlists: MusicItemCollection<Playlist> = []
     @State private var showLoadedToast = false
+
+    @State private var searchText: String = ""
+    @State private var recentSearches: [String] = []
+    
+    private var filteredPlaylists: MusicItemCollection<Playlist> {
+        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return playlists
+        }
+        let lower = searchText.lowercased()
+        let filtered = Array(playlists).filter { $0.name.lowercased().contains(lower) }
+        return MusicItemCollection(filtered)
+    }
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -107,7 +119,7 @@ struct ContentView: View {
                         .disabled(!musicAuth.isAuthorized)
                     }
                     
-                    List(playlists, id: \.id) { playlist in
+                    List(filteredPlaylists, id: \.id) { playlist in
                         NavigationLink(
                             destination: TracksView(playlist: playlist)
                                 .environmentObject(player)
@@ -134,6 +146,23 @@ struct ContentView: View {
                         }
                     }
                     .navigationTitle("PlaylistMemory AM")
+                    .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search Playlists") {
+                        // Suggestions from recent searches
+                        ForEach(recentSearches, id: \.self) { term in
+                            Text(term).searchCompletion(term)
+                        }
+                    }
+                    .onSubmit(of: .search) {
+                        let term = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !term.isEmpty else { return }
+                        if !recentSearches.contains(term) {
+                            recentSearches.insert(term, at: 0)
+                            if recentSearches.count > 8 { recentSearches.removeLast(recentSearches.count - 8) }
+                        }
+                    }
+                    .onChange(of: searchText) { _, newValue in
+                        // Optionally, we could live-update suggestions or debounce; no-op for now
+                    }
                     .task {
                         if musicAuth.isAuthorized && playlists.isEmpty {
                             await loadPlaylists()
@@ -143,6 +172,12 @@ struct ContentView: View {
                         if newValue {
                             Task { await loadPlaylists() }
                         }
+                    }
+                    
+                    if !searchText.isEmpty && filteredPlaylists.isEmpty {
+                        Text("No playlists found for \"\(searchText)\"")
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 8)
                     }
                 }
             }
@@ -190,4 +225,3 @@ struct ContentView: View {
 #Preview {
     ContentView()
 }
-
