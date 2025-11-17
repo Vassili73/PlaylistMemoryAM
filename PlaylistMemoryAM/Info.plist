@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+
+    <!-- Für Hintergrund-Audio (optional aber gut für Musik-Apps) -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>audio</string>
+    </array>
+
+    <!-- Erforderlich für Apple Music Zugriff -->
+    <key>NSAppleMusicUsageDescription</key>
+    <string>Die App benötigt Zugriff auf Apple Music, um deine Playlists anzuzeigen.</string>
+
+</dict>
+</plist>
