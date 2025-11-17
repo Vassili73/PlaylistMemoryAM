@@ -36,8 +36,18 @@ struct TracksView: View {
                     
                     HStack(spacing: 30) {
                         Button(action: {
-                            if let first = tracks.first {
-                                playerManager.play(track: first, in: tracks)
+                            if !tracks.isEmpty {
+                                let playCollection: MusicItemCollection<Track>
+                                if shuffleEnabledUI {
+                                    // Create a shuffled array and wrap it back into a MusicItemCollection for playback
+                                    let shuffledArray = Array(tracks).shuffled()
+                                    playCollection = MusicItemCollection(shuffledArray)
+                                } else {
+                                    playCollection = tracks
+                                }
+                                if let first = playCollection.first {
+                                    playerManager.play(track: first, in: playCollection)
+                                }
                             }
                         }) {
                             VStack {
@@ -49,24 +59,12 @@ struct TracksView: View {
                         }
 
                         Button(action: {
-                            Task {
-                                let player = ApplicationMusicPlayer.shared
-                                // Safely read current shuffle mode (may be optional on some SDKs)
-                                let currentOpt = player.state.shuffleMode
-                                let current = currentOpt ?? ApplicationMusicPlayer.ShuffleMode.off
-                                let newMode: ApplicationMusicPlayer.ShuffleMode = (current == ApplicationMusicPlayer.ShuffleMode.off) ? .songs : .off
-                                // Try to set via key path if available; otherwise just update UI
-                                if let _ = currentOpt {
-                                    // Best-effort: attempt direct assignment if supported by this SDK
-                                    // Note: Some SDKs don't expose a setter. We guard with #if to compile broadly.
-                                    #if compiler(>=6)
-                                    // No-op: setter may be unavailable; fall back to UI update
-                                    #else
-                                    #endif
-                                }
-                                // Update UI to reflect intended state
-                                shuffleEnabledUI = (newMode != ApplicationMusicPlayer.ShuffleMode.off)
-                            }
+                            // Toggle our UI state and, if desired, reshuffle the upcoming queue when starting playback
+                            shuffleEnabledUI.toggle()
+
+                            // If you want to immediately apply shuffling to the currently loaded tracks when pressing shuffle,
+                            // you can reorder a local copy and start playback. Otherwise, we just reflect the UI state here
+                            // and use it when starting playback via the Play button.
                         }) {
                             VStack {
                                 Image(systemName: "shuffle")
@@ -78,32 +76,18 @@ struct TracksView: View {
                         }
 
                         Button(action: {
-                            Task {
-                                let player = ApplicationMusicPlayer.shared
-                                // Safely read current repeat mode (may be optional on some SDKs)
-                                let currentOpt = player.state.repeatMode
-                                let current = currentOpt ?? ApplicationMusicPlayer.RepeatMode.none
-                                let next: ApplicationMusicPlayer.RepeatMode
-                                switch current {
-                                case ApplicationMusicPlayer.RepeatMode.none: next = .all
-                                case ApplicationMusicPlayer.RepeatMode.all: next = .one
-                                case ApplicationMusicPlayer.RepeatMode.one: next = .none
-                                @unknown default: next = .none
-                                }
-                                // Attempt to set if possible; otherwise just update UI
-                                if let _ = currentOpt {
-                                    #if compiler(>=6)
-                                    // No-op placeholder for unavailable setter
-                                    #else
-                                    #endif
-                                }
-                                repeatModeUI = next
+                            // Cycle local repeat mode UI: none -> all -> one -> none
+                            switch repeatModeUI {
+                            case .none: repeatModeUI = .all
+                            case .all: repeatModeUI = .one
+                            case .one: repeatModeUI = .none
+                            @unknown default: repeatModeUI = .none
                             }
                         }) {
                             VStack {
-                                Image(systemName: repeatModeUI == ApplicationMusicPlayer.RepeatMode.one ? "repeat.1" : "repeat")
+                                Image(systemName: repeatModeUI == .one ? "repeat.1" : "repeat")
                                     .font(.system(size: 26))
-                                    .foregroundColor(repeatModeUI == ApplicationMusicPlayer.RepeatMode.none ? .primary : .green)
+                                    .foregroundColor(repeatModeUI == .none ? .primary : .green)
                                 Text("Repeat")
                                     .font(.caption)
                             }
@@ -151,10 +135,8 @@ struct TracksView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            let player = ApplicationMusicPlayer.shared
-            let shuffle = player.state.shuffleMode ?? ApplicationMusicPlayer.ShuffleMode.off
-            shuffleEnabledUI = (shuffle != ApplicationMusicPlayer.ShuffleMode.off)
-            if let rep = player.state.repeatMode { repeatModeUI = rep }
+            // Initialize UI defaults; some MusicKit properties may be unavailable on this platform/version.
+            // We keep repeatModeUI purely local to avoid unavailable APIs.
             await loadTracks()
         }
     }

@@ -73,6 +73,7 @@ struct ContentView: View {
     @StateObject private var player = MusicPlayerManager.shared
     
     @State private var playlists: MusicItemCollection<Playlist> = []
+    @State private var showLoadedToast = false
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -84,20 +85,27 @@ struct ContentView: View {
                     LastHeardCard()
                         .environmentObject(player)
                     
-                    Button("Apple Music verbinden") {
-                        Task { await musicAuth.requestAuthorization() }
+                    if !musicAuth.isAuthorized {
+                        Button("Apple Music verbinden") {
+                            Task { await musicAuth.requestAuthorization() }
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                    } else {
+                        // Optional: Show a subtle status or nothing at all when authorized
+                        EmptyView()
                     }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.red)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                    .padding(.horizontal)
                     
-                    Button("Playlists laden") {
-                        Task { await loadPlaylists() }
+                    if playlists.isEmpty {
+                        Button("Playlists laden") {
+                            Task { await loadPlaylists() }
+                        }
+                        .disabled(!musicAuth.isAuthorized)
                     }
-                    .disabled(!musicAuth.isAuthorized)
                     
                     List(playlists, id: \.id) { playlist in
                         NavigationLink(
@@ -126,6 +134,16 @@ struct ContentView: View {
                         }
                     }
                     .navigationTitle("PlaylistMemory AM")
+                    .task {
+                        if musicAuth.isAuthorized && playlists.isEmpty {
+                            await loadPlaylists()
+                        }
+                    }
+                    .onChange(of: musicAuth.isAuthorized) { _, newValue in
+                        if newValue {
+                            Task { await loadPlaylists() }
+                        }
+                    }
                 }
             }
             
@@ -134,6 +152,16 @@ struct ContentView: View {
                 .environmentObject(player)
                 .frame(height: player.currentTrack == nil ? 0 : 70)
                 .animation(.easeInOut, value: player.currentTrack)
+            
+            if showLoadedToast {
+                Text("Playlists geladen")
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .shadow(radius: 3)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.bottom, 90)
+            }
         }
         .sheet(isPresented: $player.isShowingFullPlayer) {
             FullPlayerView()
@@ -146,6 +174,13 @@ struct ContentView: View {
             let req = MusicLibraryRequest<Playlist>()
             let res = try await req.response()
             playlists = res.items
+            showLoadedToast = !playlists.isEmpty
+            if showLoadedToast {
+                // Auto-hide after 2 seconds
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    showLoadedToast = false
+                }
+            }
         } catch {
             print("❌ Fehler beim Laden:", error)
         }
