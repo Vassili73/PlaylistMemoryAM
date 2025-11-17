@@ -25,6 +25,9 @@ class MusicPlayerManager: ObservableObject {
     // Shuffle/Repeat
     @Published var shuffleEnabled = false
     @Published var repeatMode: RepeatMode = .off
+
+    @Published var lastPlaylistName: String? = nil
+    @Published var lastMemoryKey: String? = nil
     
     private let player = ApplicationMusicPlayer.shared
     
@@ -60,6 +63,13 @@ class MusicPlayerManager: ObservableObject {
         
         // Neue Playlist
         self.playlist = playlist
+        
+        // Versuch, einen Playlist-Namen zu bestimmen (falls verfügbar) – als Fallback nur "Playlist"
+        if let albumTitle = playlist.first?.albumTitle, !albumTitle.isEmpty {
+            lastPlaylistName = albumTitle
+        } else {
+            lastPlaylistName = "Playlist"
+        }
         
         if let idx = playlist.firstIndex(of: track) {
             index = idx
@@ -203,8 +213,10 @@ class MusicPlayerManager: ObservableObject {
         
         let key = memoryKey(for: playlist)
         
+        lastMemoryKey = key
         let mem: [String: Any] = [
-            "index": index
+            "index": index,
+            "playlistName": lastPlaylistName ?? "Playlist"
         ]
         
         UserDefaults.standard.set(mem, forKey: key)
@@ -219,44 +231,44 @@ class MusicPlayerManager: ObservableObject {
         return data["index"] as? Int
     }
     
-    
-    // MARK: - Shuffle (intern verwaltet)
-    func toggleShuffle() {
-        shuffleEnabled.toggle()
-        
-        guard !playlist.isEmpty else { return }
-        
-        if shuffleEnabled {
-            // Shuffle aktiv → Playlist mischen
-            let current = currentTrack
-            playlist = MusicItemCollection(playlist.shuffled())
-            
-            if let current = current,
-               let newIndex = playlist.firstIndex(of: current) {
-                index = newIndex
-            } else {
-                index = 0
-            }
-        } else {
-            // Shuffle aus: hier könntest du optional wieder Original-Reihenfolge laden,
-            // aktuell lassen wir einfach die aktuelle Reihenfolge.
-        }
-        
-        saveMemory()
+    // MARK: - Memory lesen (roh)
+    private func getSavedMemory(forKey key: String) -> [String: Any]? {
+        return UserDefaults.standard.dictionary(forKey: key)
     }
-    
-    
-    // MARK: - Repeat Modus wechseln
-    func toggleRepeat() {
-        switch repeatMode {
-        case .off:
-            repeatMode = .all
-        case .all:
-            repeatMode = .one
-        case .one:
-            repeatMode = .off
+
+    // MARK: - Resume letzte Wiedergabe
+    func resumeLastPlayback() {
+        // Wenn wir bereits spielen, einfach toggeln
+        if currentTrack != nil {
+            togglePlayPause()
+            return
         }
-        
+
+        // Falls wir kürzlich gespeichert haben, nutze lastMemoryKey
+        guard let key = lastMemoryKey ?? (playlist.isEmpty ? nil : memoryKey(for: playlist)) else {
+            // Kein Key verfügbar → nichts zu tun
+            return
+        }
+        guard let mem = getSavedMemory(forKey: key) else { return }
+
+        // Index laden
+        let savedIndex = mem["index"] as? Int ?? 0
+        let savedName = mem["playlistName"] as? String
+        self.lastPlaylistName = savedName
+
+        // Wir haben hier keine persistente Playlist-ID in deinem aktuellen Modell.
+        // Workaround: Wenn aktuell keine Playlist im Manager ist, können wir nicht laden.
+        // In deinem Flow wird die Playlist beim Öffnen von TracksView geladen –
+        // daher versuchen wir nur fortzusetzen, wenn noch eine Playlist im Speicher liegt.
+        guard !playlist.isEmpty else {
+            // Ohne geladene Playlist können wir hier nicht automatisch fortsetzen.
+            // UI kann ggf. den Nutzer zur Playlist führen.
+            return
+        }
+
+        // Index bounds check
+        let idx = playlist.indices.contains(savedIndex) ? savedIndex : 0
+        playIndex(idx)
         saveMemory()
     }
 }

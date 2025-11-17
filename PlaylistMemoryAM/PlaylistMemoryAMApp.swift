@@ -26,6 +26,7 @@ struct PlaylistMemoryAMApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(MusicPlayerManager.shared)
         }
         .modelContainer(sharedModelContainer)
     }

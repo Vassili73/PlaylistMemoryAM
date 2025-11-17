@@ -70,7 +70,7 @@ struct FullPlayerView: View {
                 
                 // SHUFFLE BUTTON
                 Button {
-                    player.toggleShuffle()
+                    player.shuffleEnabled.toggle()
                 } label: {
                     Image(systemName: "shuffle")
                         .font(.title2)
@@ -107,7 +107,7 @@ struct FullPlayerView: View {
                 
                 // REPEAT BUTTON (3-stufig)
                 Button {
-                    player.toggleRepeat()
+                    toggleRepeat()
                 } label: {
                     Image(systemName: repeatIcon())
                         .font(.title2)
@@ -131,6 +131,18 @@ struct FullPlayerView: View {
             return "repeat"
         case .one:
             return "repeat.1"
+        }
+    }
+    
+    // MARK: - Toggle Repeat Mode (off -> all -> one -> off)
+    private func toggleRepeat() {
+        switch player.repeatMode {
+        case .off:
+            player.repeatMode = .all
+        case .all:
+            player.repeatMode = .one
+        case .one:
+            player.repeatMode = .off
         }
     }
     
