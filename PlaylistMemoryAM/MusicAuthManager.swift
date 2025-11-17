@@ -6,9 +6,20 @@ class MusicAuthManager: ObservableObject {
     
     @Published var isAuthorized = false
     
+    init() {
+        Task { await refreshAuthorizationStatus() }
+    }
+    
+    func refreshAuthorizationStatus() async {
+        let status = await MusicAuthorization.currentStatus
+        await MainActor.run {
+            self.isAuthorized = (status == .authorized)
+        }
+    }
+    
     func requestAuthorization() async {
         let status = await MusicAuthorization.request()
-        DispatchQueue.main.async {
+        await MainActor.run {
             self.isAuthorized = (status == .authorized)
         }
     }

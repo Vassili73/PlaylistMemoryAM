@@ -37,6 +37,13 @@ struct PlaylistMemoryAMApp: App {
             ContentView()
                 .environmentObject(MusicPlayerManager.shared)
                 .environmentObject(router)
+                .task {
+                    // Attempt to resume last playback on app start by loading stored playlist
+                    try? await Task.sleep(nanoseconds: 250_000_000)
+                    await MainActor.run {
+                        MusicPlayerManager.shared.resumeFromStoredPlaylist()
+                    }
+                }
                 .onOpenURL { url in
                     // Expected formats:
                     // playlistmemory://playlist/<id>

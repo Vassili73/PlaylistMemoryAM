@@ -46,6 +46,9 @@ struct TracksView: View {
                                     playCollection = tracks
                                 }
                                 if let first = playCollection.first {
+                                    if let pid = playlist.id as MusicItemID? {
+                                        playerManager.setCurrentPlaylistID(pid)
+                                    }
                                     playerManager.play(track: first, in: playCollection)
                                 }
                             }
@@ -138,6 +141,9 @@ struct TracksView: View {
             // Initialize UI defaults; some MusicKit properties may be unavailable on this platform/version.
             // We keep repeatModeUI purely local to avoid unavailable APIs.
             await loadTracks()
+            if let pid = playlist.id as MusicItemID? {
+                playerManager.setCurrentPlaylistID(pid)
+            }
         }
     }
     
