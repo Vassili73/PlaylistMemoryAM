@@ -130,7 +130,7 @@ struct ContentView: View {
     
     @State private var playlists: MusicItemCollection<Playlist> = []
     @State private var showLoadedToast = false
-
+    
     @State private var searchText: String = ""
     @State private var recentSearches: [String] = []
     
@@ -207,6 +207,7 @@ struct ContentView: View {
                             }
                         }
                     }
+                    .padding(.bottom, player.currentTrack == nil ? 0 : 12)
                     .navigationTitle("PlaylistMemory AM")
                     .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search Playlists") {
                         // Suggestions from recent searches
@@ -320,16 +321,10 @@ struct ContentView: View {
                 .environmentObject(player)
                 .frame(height: player.currentTrack == nil ? 0 : 70)
                 .animation(.easeInOut, value: player.currentTrack)
-            
-            if showLoadedToast {
-                Text("Playlists geladen")
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .shadow(radius: 3)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .padding(.bottom, 90)
-            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            Color.clear
+                .frame(height: player.currentTrack == nil ? 0 : 64)
         }
         .sheet(isPresented: $player.isShowingFullPlayer) {
             FullPlayerView()

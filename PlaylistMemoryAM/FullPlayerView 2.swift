@@ -8,9 +8,15 @@ import UIKit
 
 struct FullPlayerView: View {
     @EnvironmentObject var player: MusicPlayerManager
+    @State private var dragOffset: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 24) {
+            Capsule()
+                .fill(Color.secondary.opacity(0.3))
+                .frame(width: 40, height: 5)
+                .padding(.top, 6)
+
             // Cover
             if let artwork = player.currentTrack?.artwork,
                let url = artwork.url(width: 600, height: 600) {
@@ -140,6 +146,22 @@ struct FullPlayerView: View {
 
             Spacer(minLength: 8)
         }
+        .offset(y: max(0, dragOffset))
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    // Only allow dragging downward
+                    dragOffset = max(0, value.translation.height)
+                }
+                .onEnded { value in
+                    if value.translation.height > 120 {
+                        player.isShowingFullPlayer = false
+                    }
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                        dragOffset = 0
+                    }
+                }
+        )
         .padding()
     }
 
