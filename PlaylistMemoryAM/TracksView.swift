@@ -161,11 +161,13 @@ struct TracksView: View {
             
             isLoading = false
             
-            // 🔥 gespeicherter Index?
-            if let saved = playerManager.getSavedIndex(for: tracks),
-               tracks.indices.contains(saved) {
-                let track = tracks[saved]
-                playerManager.play(track: track, in: tracks)
+            // 🔥 gespeicherter Index? Optionales Autoplay beim Öffnen der Playlist
+            if UserDefaults.standard.bool(forKey: "pm_auto_resume_on_open_playlist") {
+                if let saved = playerManager.getSavedIndex(for: tracks),
+                   tracks.indices.contains(saved) {
+                    let track = tracks[saved]
+                    playerManager.play(track: track, in: tracks)
+                }
             }
             
         } catch {

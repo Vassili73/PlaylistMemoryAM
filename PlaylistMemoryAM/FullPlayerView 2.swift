@@ -1,5 +1,8 @@
 import SwiftUI
 import MusicKit
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct FullPlayerView: View {
     
@@ -71,6 +74,12 @@ struct FullPlayerView: View {
                 // SHUFFLE BUTTON
                 Button {
                     player.shuffleEnabled.toggle()
+                    if UserDefaults.standard.bool(forKey: "pm_haptics_enabled") {
+                        #if canImport(UIKit)
+                        let gen = UIImpactFeedbackGenerator(style: .light)
+                        gen.impactOccurred()
+                        #endif
+                    }
                 } label: {
                     Image(systemName: "shuffle")
                         .font(.title2)
@@ -143,6 +152,12 @@ struct FullPlayerView: View {
             player.repeatMode = .one
         case .one:
             player.repeatMode = .off
+        }
+        if UserDefaults.standard.bool(forKey: "pm_haptics_enabled") {
+            #if canImport(UIKit)
+            let gen = UIImpactFeedbackGenerator(style: .light)
+            gen.impactOccurred()
+            #endif
         }
     }
     

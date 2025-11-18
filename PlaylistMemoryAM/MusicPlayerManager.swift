@@ -2,6 +2,10 @@ import Foundation
 import MusicKit
 import Combine
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 // 🔁 Eigene Repeat-Optionen
 enum RepeatMode {
     case off
@@ -143,6 +147,13 @@ class MusicPlayerManager: ObservableObject {
                 try? await Task.sleep(nanoseconds: 120_000_000)
                 syncNowPlayingFromSystem()
                 saveMemory()
+                
+                if UserDefaults.standard.bool(forKey: "pm_haptics_enabled") {
+                    #if canImport(UIKit)
+                    let gen = UIImpactFeedbackGenerator(style: .light)
+                    gen.impactOccurred()
+                    #endif
+                }
             } catch {
                 print("❌ Fehler Next:", error)
             }
@@ -159,6 +170,13 @@ class MusicPlayerManager: ObservableObject {
                 try? await Task.sleep(nanoseconds: 120_000_000)
                 syncNowPlayingFromSystem()
                 saveMemory()
+                
+                if UserDefaults.standard.bool(forKey: "pm_haptics_enabled") {
+                    #if canImport(UIKit)
+                    let gen = UIImpactFeedbackGenerator(style: .light)
+                    gen.impactOccurred()
+                    #endif
+                }
             } catch {
                 print("❌ Fehler Previous:", error)
             }
@@ -178,6 +196,13 @@ class MusicPlayerManager: ObservableObject {
             }
             let status = player.state.playbackStatus
             isPlaying = (status == .playing)
+            
+            if UserDefaults.standard.bool(forKey: "pm_haptics_enabled") {
+                #if canImport(UIKit)
+                let gen = UIImpactFeedbackGenerator(style: .light)
+                gen.impactOccurred()
+                #endif
+            }
         }
     }
     
@@ -281,9 +306,11 @@ class MusicPlayerManager: ObservableObject {
                 let idx = collection.indices.contains(savedIndex) ? savedIndex : 0
                 self.playIndex(idx)
 
-                if let pos = self.getSavedPosition(for: collection), pos > 0 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        self.seek(to: pos)
+                if UserDefaults.standard.bool(forKey: "pm_restore_last_position") {
+                    if let pos = self.getSavedPosition(for: collection), pos > 0 {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            self.seek(to: pos)
+                        }
                     }
                 }
             } catch {
@@ -327,14 +354,26 @@ class MusicPlayerManager: ObservableObject {
         let idx = playlist.indices.contains(savedIndex) ? savedIndex : 0
         playIndex(idx)
 
-        // Restore position if available
-        if let pos = mem["position"] as? TimeInterval, pos > 0 {
-            // Give the player a brief moment to start, then seek
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                self.seek(to: pos)
+        if UserDefaults.standard.bool(forKey: "pm_restore_last_position") {
+            if let pos = mem["position"] as? TimeInterval, pos > 0 {
+                // Give the player a brief moment to start, then seek
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    self.seek(to: pos)
+                }
             }
         }
 
         saveMemory()
     }
+    
+    // MARK: - Reset Last Played Memory (for settings)
+    func resetLastPlayed() {
+        // Clear playlist id and last key
+        UserDefaults.standard.removeObject(forKey: lastPlaylistIDKey)
+        lastMemoryKey = nil
+        currentTrack = nil
+        isPlaying = false
+        playbackTime = 0
+    }
 }
+
