@@ -1,5 +1,8 @@
 import SwiftUI
 import MusicKit
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct FullPlayerView: View {
     
@@ -27,7 +30,7 @@ struct FullPlayerView: View {
                     .cornerRadius(12)
             }
             
-            // Titel / Artist
+            // Titel / Artist / Album
             VStack(spacing: 6) {
                 Text(player.currentTrack?.title ?? "Kein Titel")
                     .font(.title2)
@@ -37,6 +40,12 @@ struct FullPlayerView: View {
                 
                 Text(player.currentTrack?.artistName ?? "Unbekannter Künstler")
                     .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+
+                Text(player.currentTrack?.albumTitle ?? "Album")
+                    .foregroundColor(.secondary)
+                    .font(.subheadline)
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
@@ -71,6 +80,12 @@ struct FullPlayerView: View {
                 // SHUFFLE BUTTON
                 Button {
                     player.shuffleEnabled.toggle()
+                    if UserDefaults.standard.bool(forKey: "pm_haptics_enabled") {
+                        #if canImport(UIKit)
+                        let gen = UIImpactFeedbackGenerator(style: .light)
+                        gen.impactOccurred()
+                        #endif
+                    }
                 } label: {
                     Image(systemName: "shuffle")
                         .font(.title2)
@@ -143,6 +158,12 @@ struct FullPlayerView: View {
             player.repeatMode = .one
         case .one:
             player.repeatMode = .off
+        }
+        if UserDefaults.standard.bool(forKey: "pm_haptics_enabled") {
+            #if canImport(UIKit)
+            let gen = UIImpactFeedbackGenerator(style: .light)
+            gen.impactOccurred()
+            #endif
         }
     }
     

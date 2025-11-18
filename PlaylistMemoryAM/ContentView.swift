@@ -136,6 +136,9 @@ struct ContentView: View {
     
     @State private var showSettings = false
     @State private var autoResumeEnabled: Bool = UserDefaults.standard.bool(forKey: "pm_auto_resume_enabled")
+    @State private var autoResumeOnOpenPlaylist: Bool = UserDefaults.standard.bool(forKey: "pm_auto_resume_on_open_playlist")
+    @State private var restoreLastPosition: Bool = UserDefaults.standard.bool(forKey: "pm_restore_last_position")
+    @State private var hapticsEnabled: Bool = UserDefaults.standard.bool(forKey: "pm_haptics_enabled")
     
     private var filteredPlaylists: MusicItemCollection<Playlist> {
         guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -253,6 +256,45 @@ struct ContentView: View {
                                             UserDefaults.standard.set(newValue, forKey: "pm_auto_resume_enabled")
                                         }
                                     ))
+                                    Toggle("Automatisch fortsetzen beim Öffnen der Playlist", isOn: Binding(
+                                        get: { autoResumeOnOpenPlaylist },
+                                        set: { newValue in
+                                            autoResumeOnOpenPlaylist = newValue
+                                            UserDefaults.standard.set(newValue, forKey: "pm_auto_resume_on_open_playlist")
+                                        }
+                                    ))
+                                    Toggle("Letzte Position wiederherstellen", isOn: Binding(
+                                        get: { restoreLastPosition },
+                                        set: { newValue in
+                                            restoreLastPosition = newValue
+                                            UserDefaults.standard.set(newValue, forKey: "pm_restore_last_position")
+                                        }
+                                    ))
+                                }
+                                Section(header: Text("Feedback")) {
+                                    Toggle("Haptisches Feedback bei Steuerung", isOn: Binding(
+                                        get: { hapticsEnabled },
+                                        set: { newValue in
+                                            hapticsEnabled = newValue
+                                            UserDefaults.standard.set(newValue, forKey: "pm_haptics_enabled")
+                                        }
+                                    ))
+                                }
+                                Section(header: Text("Speicher")) {
+                                    Button(role: .destructive) {
+                                        // Clear last played memory and playlist id
+                                        UserDefaults.standard.removeObject(forKey: "pm_last_playlist_id")
+                                        // Also clear any per-playlist memory keys by brute-force if desired (skipped here)
+                                    } label: {
+                                        Text("\"Zuletzt gespielt\" zurücksetzen")
+                                    }
+                                    Button(role: .destructive) {
+                                        // Clear recent searches
+                                        recentSearches = []
+                                        // Persist an empty array if you store it in UserDefaults elsewhere (not currently persisted beyond runtime)
+                                    } label: {
+                                        Text("Suchverlauf löschen")
+                                    }
                                 }
                             }
                             .navigationTitle("Einstellungen")
