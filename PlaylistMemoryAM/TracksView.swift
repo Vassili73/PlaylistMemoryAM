@@ -49,6 +49,7 @@ struct TracksView: View {
                                     if let pid = playlist.id as MusicItemID? {
                                         playerManager.setCurrentPlaylistID(pid)
                                     }
+                                    playerManager.lastPlaylistName = playlist.name
                                     playerManager.play(track: first, in: playCollection)
                                 }
                             }
@@ -130,6 +131,7 @@ struct TracksView: View {
                         }
                         .contentShape(Rectangle())
                         .onTapGesture {
+                            playerManager.lastPlaylistName = playlist.name
                             playerManager.play(track: track, in: tracks)
                         }
                     }

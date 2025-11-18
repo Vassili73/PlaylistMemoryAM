@@ -38,7 +38,9 @@ struct PlaylistMemoryAMApp: App {
                 .environmentObject(MusicPlayerManager.shared)
                 .environmentObject(router)
                 .task {
-                    // Attempt to resume last playback on app start by loading stored playlist
+                    // Only resume automatically if user enabled it in settings
+                    let enabled = UserDefaults.standard.bool(forKey: "pm_auto_resume_enabled")
+                    guard enabled else { return }
                     try? await Task.sleep(nanoseconds: 250_000_000)
                     await MainActor.run {
                         MusicPlayerManager.shared.resumeFromStoredPlaylist()

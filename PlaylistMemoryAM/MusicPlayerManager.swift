@@ -52,6 +52,16 @@ class MusicPlayerManager: ObservableObject {
             }
     }
     
+    private func syncNowPlayingFromSystem() {
+        // Sync playback status and time
+        playbackTime = player.playbackTime
+        let status = player.state.playbackStatus
+        isPlaying = (status == .playing)
+        // Try to derive current track from our local list and index if available
+        if playlist.indices.contains(index) {
+            currentTrack = playlist[index]
+        }
+    }
     
     // MARK: - Speicher-Schlüssel (nur über erste Track-ID)
     private func memoryKey(for playlist: MusicItemCollection<Track>) -> String {
@@ -83,12 +93,7 @@ class MusicPlayerManager: ObservableObject {
         // Neue Playlist
         self.playlist = playlist
         
-        // Versuch, einen Playlist-Namen zu bestimmen (falls verfügbar) – als Fallback nur "Playlist"
-        if let albumTitle = playlist.first?.albumTitle, !albumTitle.isEmpty {
-            lastPlaylistName = albumTitle
-        } else {
-            lastPlaylistName = "Playlist"
-        }
+        // Do not overwrite lastPlaylistName here; caller (TracksView) or resume flow sets it explicitly
         
         if let idx = playlist.firstIndex(of: track) {
             index = idx
@@ -108,22 +113,19 @@ class MusicPlayerManager: ObservableObject {
         let items = Array(playlist)
         Task {
             do {
-                // Set full queue
                 player.queue = ApplicationMusicPlayer.Queue(for: items)
-                // Start playback
                 try await player.play()
-
-                // Try to move to requested index by skipping forward
-                // If API to jump by index is unavailable, perform sequential skips
                 if idx > 0 {
                     for _ in 0..<idx { try? await player.skipToNextEntry() }
                 }
-
-                // Update UI state
-                let track = items[idx]
-                currentTrack = track
+                index = idx
                 isPlaying = true
-                startProgress(for: track)
+                if playlist.indices.contains(idx) {
+                    startProgress(for: playlist[idx])
+                }
+                // Allow system to settle, then sync
+                try? await Task.sleep(nanoseconds: 150_000_000)
+                syncNowPlayingFromSystem()
                 saveMemory()
             } catch {
                 print("❌ Fehler beim Abspielen:", error)
@@ -137,11 +139,9 @@ class MusicPlayerManager: ObservableObject {
         Task {
             do {
                 try await player.skipToNextEntry()
-                // Reflect state optimistically
-                isPlaying = true
-                // Advance local index if possible
                 if index < max(playlist.count - 1, 0) { index += 1 }
-                if playlist.indices.contains(index) { currentTrack = playlist[index] }
+                try? await Task.sleep(nanoseconds: 120_000_000)
+                syncNowPlayingFromSystem()
                 saveMemory()
             } catch {
                 print("❌ Fehler Next:", error)
@@ -155,9 +155,9 @@ class MusicPlayerManager: ObservableObject {
         Task {
             do {
                 try await player.skipToPreviousEntry()
-                isPlaying = true
                 if index > 0 { index -= 1 }
-                if playlist.indices.contains(index) { currentTrack = playlist[index] }
+                try? await Task.sleep(nanoseconds: 120_000_000)
+                syncNowPlayingFromSystem()
                 saveMemory()
             } catch {
                 print("❌ Fehler Previous:", error)
@@ -211,19 +211,8 @@ class MusicPlayerManager: ObservableObject {
             if self.playbackTime >= self.playbackDuration {
                 self.playbackTime = self.playbackDuration
                 
-                // Auto-Weiterlogik
-                switch self.repeatMode {
-                case .one:
-                    self.playIndex(self.index)
-                case .all:
-                    self.nextTrack()
-                case .off:
-                    if self.index < self.playlist.count - 1 {
-                        self.nextTrack()
-                    } else {
-                        self.isPlaying = false
-                    }
-                }
+                // Stop at duration; system player manages advancing.
+                self.isPlaying = (self.player.state.playbackStatus == .playing)
             }
             
             self.saveMemory()
@@ -286,11 +275,7 @@ class MusicPlayerManager: ObservableObject {
 
                 let collection = MusicItemCollection(tracks)
                 self.playlist = collection
-                if let albumTitle = collection.first?.albumTitle, !albumTitle.isEmpty {
-                    self.lastPlaylistName = albumTitle
-                } else {
-                    self.lastPlaylistName = "Playlist"
-                }
+                self.lastPlaylistName = playlist.name
 
                 let savedIndex = self.getSavedIndex(for: collection) ?? 0
                 let idx = collection.indices.contains(savedIndex) ? savedIndex : 0
@@ -353,4 +338,3 @@ class MusicPlayerManager: ObservableObject {
         saveMemory()
     }
 }
-
