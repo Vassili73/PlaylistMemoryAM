@@ -1,0 +1,44 @@
+name: Auto Tag on Push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Get latest tag
+        id: tag
+        run: |
+          last_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
+          if [ -z "$last_tag" ]; then
+            echo "last=1.0.0" >> $GITHUB_OUTPUT
+          else
+            echo "last=$last_tag" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          last=${{ steps.tag.outputs.last }}
+          IFS='.' read -r major minor patch <<< "$last"
+          new_tag="$major.$minor.$((patch+1))"
+          echo "new=$new_tag" >> $GITHUB_OUTPUT
+
+      - name: Create new tag
+        run: |
+          git tag ${{ steps.bump.outputs.new }}
+          git push origin ${{ steps.bump.outputs.new }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.bump.outputs.new }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
