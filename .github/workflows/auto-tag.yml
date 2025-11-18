@@ -5,40 +5,39 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   tag:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Get latest tag
-        id: tag
-        run: |
-          last_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
-          if [ -z "$last_tag" ]; then
-            echo "last=1.0.0" >> $GITHUB_OUTPUT
-          else
-            echo "last=$last_tag" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Bump patch version
-        id: bump
-        run: |
-          last=${{ steps.tag.outputs.last }}
-          IFS='.' read -r major minor patch <<< "$last"
-          new_tag="$major.$minor.$((patch+1))"
-          echo "new=$new_tag" >> $GITHUB_OUTPUT
-
-      - name: Create new tag
-        run: |
-          git tag ${{ steps.bump.outputs.new }}
-          git push origin ${{ steps.bump.outputs.new }}
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          tag_name: ${{ steps.bump.outputs.new }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Get last tag
+        id: get_last_tag
+        run: |
+          last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+          echo "last_tag=$last_tag" >> $GITHUB_OUTPUT
+
+      - name: Calculate next version
+        id: calc
+        run: |
+          last="${{ steps.get_last_tag.outputs.last_tag }}"
+          echo "Last tag was $last"
+          
+          version="${last#v}"
+          IFS='.' read -r major minor patch <<< "$version"
+          patch=$((patch + 1))
+          new="v$major.$minor.$patch"
+
+          echo "new_tag=$new" >> $GITHUB_OUTPUT
+          echo "New tag: $new"
+
+      - name: Create tag
+        run: |
+          git tag ${{ steps.calc.outputs.new_tag }}
+          git push origin ${{ steps.calc.outputs.new_tag }}
