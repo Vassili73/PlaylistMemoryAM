@@ -9,6 +9,7 @@ import UIKit
 struct FullPlayerView: View {
     @EnvironmentObject var player: MusicPlayerManager
     @State private var dragOffset: CGFloat = 0
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 24) {
@@ -44,13 +45,13 @@ struct FullPlayerView: View {
 
                 Text(player.currentTrack?.artistName ?? "Unbekannter Künstler")
                     .font(.title3)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(colorScheme == .dark ? .red : .blue)
                     .lineLimit(1)
                     .truncationMode(.tail)
 
                 Text(player.currentTrack?.albumTitle ?? "Album")
                     .font(.headline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(colorScheme == .dark ? .red : .blue)
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
@@ -63,6 +64,7 @@ struct FullPlayerView: View {
                     in: 0...max(player.playbackDuration, 1)
                 )
                 .disabled(true)
+                .tint(colorScheme == .dark ? .red : .accentColor)
 
                 HStack {
                     Text(format(time: player.playbackTime))
@@ -90,7 +92,7 @@ struct FullPlayerView: View {
                 } label: {
                     Image(systemName: "shuffle")
                         .font(.title2)
-                        .foregroundColor(player.shuffleEnabled ? .green : .primary)
+                        .foregroundColor(colorScheme == .dark ? .red : (player.shuffleEnabled ? .green : .primary))
                 }
 
                 // PREVIOUS
@@ -99,6 +101,7 @@ struct FullPlayerView: View {
                 } label: {
                     Image(systemName: "backward.fill")
                         .font(.largeTitle)
+                        .foregroundColor(colorScheme == .dark ? .red : .primary)
                 }
 
                 // PLAY / PAUSE
@@ -107,6 +110,7 @@ struct FullPlayerView: View {
                 } label: {
                     Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
                         .font(.largeTitle)
+                        .foregroundColor(colorScheme == .dark ? .red : .primary)
                 }
 
                 // NEXT
@@ -115,6 +119,7 @@ struct FullPlayerView: View {
                 } label: {
                     Image(systemName: "forward.fill")
                         .font(.largeTitle)
+                        .foregroundColor(colorScheme == .dark ? .red : .primary)
                 }
 
                 // REPEAT BUTTON (3-stufig)
@@ -123,7 +128,7 @@ struct FullPlayerView: View {
                 } label: {
                     Image(systemName: repeatIcon())
                         .font(.title2)
-                        .foregroundColor(player.repeatMode == .off ? .primary : .green)
+                        .foregroundColor(colorScheme == .dark ? .red : (player.repeatMode == .off ? .primary : .green))
                 }
             }
             .padding(.top, 10)
@@ -131,7 +136,7 @@ struct FullPlayerView: View {
             // Volume + AirPlay
             VStack(spacing: 12) {
                 // System volume slider
-                SystemVolumeSlider()
+                SystemVolumeSlider(tint: colorScheme == .dark ? UIColor.red : UIColor.label)
                     .frame(height: 32)
                     .padding(.horizontal)
 
@@ -205,12 +210,16 @@ struct FullPlayerView: View {
 }
 
 struct SystemVolumeSlider: UIViewRepresentable {
+    var tint: UIColor
     func makeUIView(context: Context) -> MPVolumeView {
         let view = MPVolumeView(frame: .zero)
         view.showsRouteButton = false
+        view.tintColor = tint
         return view
     }
-    func updateUIView(_ uiView: MPVolumeView, context: Context) {}
+    func updateUIView(_ uiView: MPVolumeView, context: Context) {
+        uiView.tintColor = tint
+    }
 }
 
 struct AirPlayRoutePicker: UIViewRepresentable {
@@ -236,3 +245,4 @@ struct AirPlayRoutePicker: UIViewRepresentable {
     }
     func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
 }
+
