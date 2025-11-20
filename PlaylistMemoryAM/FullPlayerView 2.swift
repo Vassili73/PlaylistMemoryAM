@@ -92,7 +92,11 @@ struct FullPlayerView: View {
                 } label: {
                     Image(systemName: "shuffle")
                         .font(.title2)
-                        .foregroundColor(colorScheme == .dark ? .red : (player.shuffleEnabled ? .green : .primary))
+                        .foregroundColor(
+                            colorScheme == .dark
+                            ? (player.shuffleEnabled ? .green : .red)
+                            : (player.shuffleEnabled ? .green : .primary)
+                        )
                 }
 
                 // PREVIOUS
@@ -128,7 +132,11 @@ struct FullPlayerView: View {
                 } label: {
                     Image(systemName: repeatIcon())
                         .font(.title2)
-                        .foregroundColor(colorScheme == .dark ? .red : (player.repeatMode == .off ? .primary : .green))
+                        .foregroundColor(
+                            colorScheme == .dark
+                            ? (player.repeatMode == .off ? .red : .green)
+                            : (player.repeatMode == .off ? .primary : .green)
+                        )
                 }
             }
             .padding(.top, 10)
@@ -143,7 +151,7 @@ struct FullPlayerView: View {
                 // AirPlay route picker centered
                 HStack {
                     Spacer()
-                    AirPlayRoutePicker()
+                    AirPlayRoutePicker(tint: colorScheme == .dark ? UIColor.red : UIColor.label)
                         .frame(width: 44, height: 44)
                     Spacer()
                 }
@@ -223,11 +231,12 @@ struct SystemVolumeSlider: UIViewRepresentable {
 }
 
 struct AirPlayRoutePicker: UIViewRepresentable {
+    var tint: UIColor
     func makeUIView(context: Context) -> AVRoutePickerView {
         let view = AVRoutePickerView()
         view.prioritizesVideoDevices = false
-        view.activeTintColor = UIColor.systemBlue
-        view.tintColor = UIColor.label
+        view.activeTintColor = tint
+        view.tintColor = tint
         // Use a large symbol configuration comparable to .largeTitle icons
         let symbolConfig = UIImage.SymbolConfiguration(pointSize: 34, weight: .regular, scale: .default)
         // Configure the embedded button directly since AVRoutePickerView doesn't expose a style API
@@ -240,9 +249,15 @@ struct AirPlayRoutePicker: UIViewRepresentable {
             }
             // Also set preferred symbol configuration for older styles
             button.setPreferredSymbolConfiguration(symbolConfig, forImageIn: .normal)
+            button.tintColor = tint
         }
         return view
     }
-    func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
+    func updateUIView(_ uiView: AVRoutePickerView, context: Context) {
+        uiView.activeTintColor = tint
+        uiView.tintColor = tint
+        if let button = uiView.subviews.compactMap({ $0 as? UIButton }).first {
+            button.tintColor = tint
+        }
+    }
 }
-
